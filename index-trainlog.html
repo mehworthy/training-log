@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#E9EDF1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12171D" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Training log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#E9EDF1; --surface:#FFFFFF; --ink:#18202B; --muted:#5B6676; --line:#CBD3DC; --field:#F4F6F8;
+  --red:#C8102E; --blue:#1F4FA8; --yellow:#E3A400; --green:#23824F;
+  --day:var(--red); --on-day:#FFFFFF;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#12171D; --surface:#1B222B; --ink:#E8EDF2; --muted:#96A2B1; --line:#2D3743; --field:#232C37;
+    --red:#E0354F; --blue:#4A7BD6; --yellow:#F0B92A; --green:#3BA56A;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.45 "Barlow",system-ui,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--day);outline-offset:2px}
+.wrap{max-width:680px;margin:0 auto;padding:16px 16px 140px}
+
+/* Header */
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.top h1{font:700 1.9rem/1 "Barlow Condensed",sans-serif;margin:0;letter-spacing:.01em}
+.icon-btn{background:none;border:1px solid var(--line);border-radius:999px;width:42px;height:42px;display:grid;place-items:center;cursor:pointer}
+.icon-btn svg{width:20px;height:20px}
+
+/* Day selector: bumper plates */
+.plates{display:flex;gap:14px;justify-content:space-between;margin:4px 0 20px}
+.plate{flex:1;background:none;border:0;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px}
+.plate .disc{width:min(19vw,76px);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;
+  background:var(--c);color:var(--on-c,#fff);font:700 1.5rem/1 "Barlow Condensed",sans-serif;
+  box-shadow:inset 0 0 0 5px rgba(255,255,255,.22), inset 0 0 0 12px var(--c), inset 0 0 0 13px rgba(0,0,0,.18);
+  filter:saturate(.35);opacity:.6;transition:filter .2s,opacity .2s,transform .2s}
+.plate .lbl{font:600 1rem/1 "Barlow Condensed",sans-serif;color:var(--muted)}
+.plate[aria-pressed="true"] .disc{filter:none;opacity:1;transform:scale(1.06)}
+.plate[aria-pressed="true"] .lbl{color:var(--ink)}
+@media (prefers-reduced-motion: reduce){.plate .disc{transition:none}}
+
+/* Session bar */
+.session{display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin-bottom:22px}
+.field label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
+.field select,.field input{width:100%;height:46px;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:0 12px}
+
+.day-title{font:700 2.4rem/1 "Barlow Condensed",sans-serif;margin:0 0 4px;padding-left:12px;border-left:8px solid var(--day)}
+.day-sub{color:var(--muted);margin:0 0 18px;padding-left:20px}
+
+/* Exercise block */
+.ex{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:14px;overflow:hidden}
+.ex-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:14px 14px 6px}
+.ex-name{font:600 1.35rem/1.1 "Barlow Condensed",sans-serif;margin:0}
+.ex-scheme{color:var(--muted);font-size:.95rem}
+.graph-btn{flex:none;background:none;border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:.9rem}
+.graph-btn[aria-expanded="true"]{background:var(--day);border-color:var(--day);color:var(--on-day)}
+.graph-btn svg{width:16px;height:16px}
+.last{color:var(--muted);font-size:.9rem;padding:0 14px 8px}
+.sets{padding:0 14px}
+.set-row{display:grid;grid-template-columns:34px 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px}
+.set-row.time{grid-template-columns:34px 1fr}
+.set-row.hdr{margin-bottom:4px;font-size:.82rem;color:var(--muted)}
+.set-no{font:600 1.1rem/1 "Barlow Condensed",sans-serif;text-align:center;color:var(--muted)}
+.set-row input{height:48px;width:100%;border:1px solid var(--line);border-radius:8px;background:var(--field);padding:0 12px;font-size:1.15rem;font-weight:500}
+.set-row input::placeholder{color:var(--muted);opacity:.55}
+.set-tools{display:flex;gap:14px;padding:0 14px 6px}
+.link-btn{background:none;border:0;padding:6px 0;color:var(--muted);cursor:pointer;font-size:.9rem;text-decoration:underline;text-underline-offset:3px}
+.ex-foot{display:grid;grid-template-columns:110px 1fr;gap:10px;padding:8px 14px 14px;align-items:start}
+.ex-foot select,.ex-foot textarea,.notes textarea{width:100%;border:1px solid var(--line);border-radius:8px;background:var(--field);padding:10px 12px}
+.ex-foot select{height:46px}
+.ex-foot textarea{min-height:46px;resize:vertical}
+.chart-panel{border-top:1px solid var(--line);padding:12px 14px 14px}
+.chart-panel[hidden]{display:none}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.seg button{border:1px solid var(--line);background:none;border-radius:999px;padding:5px 12px;cursor:pointer;font-size:.88rem}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chart-box{position:relative;height:210px}
+.empty{color:var(--muted);font-size:.92rem;padding:18px 0;text-align:center}
+
+/* Notes + add exercise */
+.notes{margin-top:24px}
+.notes h2,.add h2{font:600 1.3rem/1.1 "Barlow Condensed",sans-serif;margin:0 0 8px}
+.notes textarea{min-height:96px;background:var(--surface)}
+.add{margin-top:22px}
+.add-row{display:grid;grid-template-columns:1fr 110px auto;gap:8px}
+.add-row input,.add-row select{height:46px;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:0 12px;width:100%}
+.btn{height:46px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:var(--bg);padding:0 16px;cursor:pointer;font-weight:600}
+.btn.ghost{background:none;color:var(--ink)}
+.new-session{margin-top:26px;text-align:center}
+
+/* Save bar */
+.savebar{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(to top,var(--bg) 70%,transparent);padding:18px 16px calc(14px + env(safe-area-inset-bottom))}
+.savebar .inner{max-width:680px;margin:0 auto}
+.save{width:100%;height:56px;border:0;border-radius:10px;background:var(--day);color:var(--on-day);font:700 1.35rem/1 "Barlow Condensed",sans-serif;cursor:pointer}
+.save:disabled{opacity:.6;cursor:progress}
+.status{text-align:center;font-size:.88rem;color:var(--muted);min-height:1.3em;margin-top:6px}
+
+/* Settings dialog */
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);padding:20px;width:min(520px,92vw)}
+dialog::backdrop{background:rgba(10,14,20,.55)}
+dialog h2{font:700 1.6rem/1 "Barlow Condensed",sans-serif;margin:0 0 6px}
+dialog p{color:var(--muted);margin:0 0 14px;font-size:.95rem}
+dialog .field{margin-bottom:12px}
+dialog .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap}
+
+.toast{position:fixed;left:50%;top:16px;transform:translate(-50%,-140%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;max-width:90vw;transition:transform .25s;z-index:10;font-size:.95rem}
+.toast.show{transform:translate(-50%,0)}
+@media (prefers-reduced-motion: reduce){.toast{transition:none}}
+@media (max-width:420px){.ex-foot{grid-template-columns:1fr}.add-row{grid-template-columns:1fr 1fr}.add-row .btn{grid-column:span 2}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Training log</h1>
+    <button class="icon-btn" id="openSettings" aria-label="Connection settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+
+  <nav class="plates" id="plates" aria-label="Choose training day"></nav>
+
+  <div class="session">
+    <div class="field"><label for="week">Week</label><select id="week"></select></div>
+    <div class="field"><label for="date">Date</label><input type="date" id="date"></div>
+  </div>
+
+  <h2 class="day-title" id="dayTitle"></h2>
+  <p class="day-sub" id="daySub"></p>
+
+  <div id="list"></div>
+
+  <section class="add">
+    <h2>Swap in or add an exercise</h2>
+    <div class="add-row">
+      <input id="addName" placeholder="e.g. Seated hamstring curl" list="knownExercises">
+      <select id="addType" aria-label="Exercise type"><option value="weight">Weight × reps</option><option value="time">Timed hold</option></select>
+      <button class="btn" id="addBtn">Add</button>
+    </div>
+    <datalist id="knownExercises"></datalist>
+  </section>
+
+  <section class="notes">
+    <h2>How are you feeling?</h2>
+    <textarea id="feeling" placeholder="Mood, stress, sleep, how your body felt before and after the session"></textarea>
+  </section>
+
+  <div class="new-session"><button class="btn ghost" id="newSession">Clear and start a new session</button></div>
+</div>
+
+<div class="savebar"><div class="inner">
+  <button class="save" id="saveBtn">Save session to sheet</button>
+  <div class="status" id="status"></div>
+</div></div>
+
+<dialog id="settings">
+  <h2>Connect your sheet</h2>
+  <p>Paste the web app URL from your Google Apps Script deployment and the PIN you set in Code.gs. These stay on this device only, never in your GitHub repo.</p>
+  <div class="field"><label for="setUrl">Web app URL</label><input id="setUrl" placeholder="https://script.google.com/macros/s/.../exec" style="width:100%;height:46px;border:1px solid var(--line);border-radius:8px;background:var(--field);padding:0 12px"></div>
+  <div class="field"><label for="setPin">PIN</label><input id="setPin" type="password" inputmode="numeric" style="width:100%;height:46px;border:1px solid var(--line);border-radius:8px;background:var(--field);padding:0 12px"></div>
+  <div class="actions">
+    <button class="btn ghost" id="testConn">Test connection</button>
+    <button class="btn ghost" id="closeSettings">Cancel</button>
+    <button class="btn" id="saveSettings">Save settings</button>
+  </div>
+  <div class="status" id="setStatus" style="text-align:left"></div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* =========================================================================
+   YOUR PROGRAM — edit this list when your coach changes the block.
+   type: "weight" = kg × reps, "time" = seconds held.
+   sets: how many set rows to show. scheme: the text shown under the name.
+   ========================================================================= */
+const PROGRAM = [
+  { id:"d1", plate:"1", focus:"Squat", color:"red", title:"Day 1 - Squat", exercises:[
+    { name:"BB Squat",               scheme:"3 × 5, then 1 × 5", sets:4 },
+    { name:"Double Arm Cable Row",   scheme:"3 × 8",  sets:3 },
+    { name:"BB RDL",                 scheme:"3 × 8",  sets:3 },
+    { name:"Machine Incline Press",  scheme:"3 × 8",  sets:3 },
+    { name:"Leg Extensions",         scheme:"3 × 10", sets:3 },
+    { name:"Cable Tricep Extension", scheme:"3 × 8",  sets:3 },
+    { name:"Planks",                 scheme:"3 × 45 s", sets:3, type:"time" },
+  ]},
+  { id:"d2", plate:"2", focus:"Bench", color:"blue", title:"Day 2 - Bench", exercises:[
+    { name:"Machine Chest Press",    scheme:"3 × 5, then 1 × 5", sets:4 },
+    { name:"Lat Pulldowns",          scheme:"3 × 10", sets:3 },
+    { name:"Hamstring Curls",        scheme:"3 × 12", sets:3 },
+    { name:"Machine Shoulder Press", scheme:"3 × 8",  sets:3 },
+    { name:"Standing Bicep Curls",   scheme:"3 × 8",  sets:3 },
+    { name:"Crunches",               scheme:"3 × 12", sets:3 },
+  ]},
+  { id:"d3", plate:"3", focus:"Deadlift", color:"yellow", title:"Day 3 - Deadlift", exercises:[
+    { name:"Conventional Deadlift",  scheme:"3 × 5, then 1 × 5", sets:4 },
+    { name:"Single Leg Leg Press",   scheme:"3 × 8",  sets:3 },
+    { name:"Reverse Grip Pulldown",  scheme:"3 × 10", sets:3 },
+    { name:"Hip Thrusts",            scheme:"3 × 10", sets:3 },
+    { name:"Lateral Raises",         scheme:"3 × 8",  sets:3 },
+    { name:"Side Planks",            scheme:"3 × 20–30 s", sets:3, type:"time" },
+  ]},
+  { id:"sun", plate:"Sun", focus:"Bench 2", color:"green", title:"Sunday - Bench Secondary", exercises:[
+    { name:"Competition Bench Press",     scheme:"1 × 4 @ RPE 5.5, then 3 × 7 @ RPE 5", sets:4 },
+    { name:"Machine Chest Press",         scheme:"3 × 12 @ RPE 7", sets:3 },
+    { name:"Single Arm Tricep Extension", scheme:"3 × 12 @ RPE 7", sets:3 },
+    { name:"DB Lateral Raises",           scheme:"3 × 12 @ RPE 7", sets:3 },
+  ]},
+];
+const WEEKS = ["1","2","3","4","5","6","7","8","9","10","11","12","Deload"];
+
+/* ---------- storage (kept on this device only) ---------- */
+const store = {
+  get(k){ try{ return JSON.parse(localStorage.getItem("tl:"+k)); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem("tl:"+k, JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem("tl:"+k); }catch(e){} },
+};
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const norm = s => String(s||"").toLowerCase().replace(/\s+/g," ").trim();
+const todayISO = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+const num = v => { const n=parseFloat(String(v).replace(",",".")); return isFinite(n)?n:null; };
+
+let settings = store.get("settings") || { url:"", pin:"" };
+let history = store.get("historyCache") || [];
+let day = PROGRAM.find(d=>d.id===store.get("lastDay")) || PROGRAM[0];
+let session = null;
+const charts = {};
+const chartMetric = {};
+
+/* ---------- session draft ---------- */
+function blankSession(){
+  return { week: store.get("lastWeek") || "1", date: todayISO(), feeling:"", extra:[], entries:{}, savedAt:null };
+}
+function loadSession(){
+  const d = store.get("draft:"+day.id);
+  // A draft that was already saved on an earlier date starts fresh next time.
+  if (d && !(d.savedAt && d.date !== todayISO())) return d;
+  return blankSession();
+}
+let draftTimer;
+function saveDraft(){ clearTimeout(draftTimer); draftTimer = setTimeout(()=>store.set("draft:"+day.id, session), 250); }
+
+function exList(){ return day.exercises.concat(session.extra); }
+function entryFor(ex){
+  if (!session.entries[ex.name]) session.entries[ex.name] = { sets: Array.from({length:ex.sets||3}, ()=>({w:"",r:""})), rir:"", comment:"" };
+  return session.entries[ex.name];
+}
+
+/* ---------- history + stats ---------- */
+function sessionsFor(name){
+  const key = norm(name), map = {};
+  for (const row of history){
+    if (norm(row.exercise) !== key) continue;
+    const s = map[row.sid] || (map[row.sid] = { sid:row.sid, date:row.date, week:row.week, sets:[], comment:"", unit:row.unit });
+    if (row.comment) s.comment = row.comment;
+    s.sets.push({ set:+row.set||0, w:num(row.weight), r:num(row.reps) });
+  }
+  return Object.values(map).map(s=>{
+    s.sets.sort((a,b)=>a.set-b.set);
+    const ws = s.sets.filter(x=>x.w!=null);
+    s.top   = ws.length ? Math.max(...ws.map(x=>x.w)) : null;
+    s.e1rm  = ws.length ? Math.max(...ws.map(x=> x.r ? (x.r===1 ? x.w : x.w*(1+x.r/30)) : x.w)) : null;
+    s.vol   = ws.reduce((a,x)=>a + x.w*(x.r||0), 0) || null;
+    s.reps  = s.sets.reduce((a,x)=>a+(x.r||0),0) || null;
+    s.hold  = s.sets.length ? Math.max(...s.sets.map(x=>x.r||0)) || null : null;
+    return s;
+  }).sort((a,b)=> a.date<b.date?-1:a.date>b.date?1:0);
+}
+function currentSid(){ return session.date + "_" + day.id; }
+function lastSessionFor(name){
+  const list = sessionsFor(name).filter(s=>s.sid!==currentSid());
+  return list[list.length-1] || null;
+}
+function fmtDate(iso){
+  const d = new Date(iso+"T00:00:00");
+  return isNaN(d) ? iso : d.toLocaleDateString(undefined,{day:"numeric",month:"short"});
+}
+
+/* ---------- rendering ---------- */
+function renderPlates(){
+  $("#plates").innerHTML = PROGRAM.map(d=>{
+    const onC = d.color==="yellow" ? "#1A1A1A" : "#fff";
+    return `<button class="plate" data-day="${d.id}" aria-pressed="${d.id===day.id}" style="--c:var(--${d.color});--on-c:${onC}">
+      <span class="disc">${esc(d.plate)}</span><span class="lbl">${esc(d.focus)}</span></button>`;
+  }).join("");
+}
+
+function render(){
+  document.documentElement.style.setProperty("--day", `var(--${day.color})`);
+  document.documentElement.style.setProperty("--on-day", day.color==="yellow" ? "#1A1A1A" : "#FFFFFF");
+  renderPlates();
+  $("#week").innerHTML = WEEKS.map(w=>`<option value="${w}" ${w===String(session.week)?"selected":""}>${w==="Deload"?"Deload":"Week "+w}</option>`).join("");
+  $("#date").value = session.date;
+  $("#dayTitle").textContent = day.title;
+  $("#daySub").textContent = `${exList().length} exercises` + (session.savedAt ? `, last saved ${new Date(session.savedAt).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})}` : "");
+  $("#feeling").value = session.feeling || "";
+
+  Object.values(charts).forEach(c=>c.destroy()); for (const k in charts) delete charts[k];
+
+  $("#list").innerHTML = exList().map((ex,i)=>{
+    const e = entryFor(ex), isTime = ex.type==="time", last = lastSessionFor(ex.name);
+    const lastTxt = last ? `Last time (${fmtDate(last.date)}): ` + last.sets.map(s=> isTime ? `${s.r??"–"} s` : `${s.w??"–"} × ${s.r??"–"}`).join(", ") : "";
+    const rows = e.sets.map((s,j)=>{
+      const p = last && last.sets[j];
+      return isTime
+        ? `<div class="set-row time"><span class="set-no">${j+1}</span>
+             <input inputmode="numeric" aria-label="${esc(ex.name)} set ${j+1} seconds" data-i="${i}" data-j="${j}" data-f="r" value="${esc(s.r)}" placeholder="${p&&p.r!=null?p.r:"secs"}"></div>`
+        : `<div class="set-row"><span class="set-no">${j+1}</span>
+             <input inputmode="decimal" aria-label="${esc(ex.name)} set ${j+1} kg" data-i="${i}" data-j="${j}" data-f="w" value="${esc(s.w)}" placeholder="${p&&p.w!=null?p.w:"kg"}">
+             <input inputmode="numeric" aria-label="${esc(ex.name)} set ${j+1} reps" data-i="${i}" data-j="${j}" data-f="r" value="${esc(s.r)}" placeholder="${p&&p.r!=null?p.r:"reps"}"></div>`;
+    }).join("");
+    return `<article class="ex" data-i="${i}">
+      <div class="ex-head">
+        <div><h3 class="ex-name">${esc(ex.name)}</h3><div class="ex-scheme">${esc(ex.scheme||"")}</div></div>
+        <button class="graph-btn" data-graph="${i}" aria-expanded="false" aria-controls="chart-${i}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-6"/></svg>Progress</button>
+      </div>
+      ${lastTxt ? `<div class="last">${esc(lastTxt)}</div>` : ""}
+      <div class="sets">
+        <div class="set-row hdr ${isTime?"time":""}"><span class="set-no">Set</span>${isTime?"<span>Seconds</span>":"<span>Weight (kg)</span><span>Reps</span>"}</div>
+        ${rows}
+      </div>
+      <div class="set-tools">
+        <button class="link-btn" data-addset="${i}">Add a set</button>
+        ${e.sets.length>1?`<button class="link-btn" data-rmset="${i}">Remove last set</button>`:""}
+        ${i>=day.exercises.length?`<button class="link-btn" data-rmex="${i}">Remove exercise</button>`:""}
+      </div>
+      <div class="ex-foot">
+        <div class="field"><label for="rir-${i}">Last set RIR</label>
+          <select id="rir-${i}" data-i="${i}" data-f="rir">${["","0","1","2","3","4","5+"].map(v=>`<option value="${v}" ${v===e.rir?"selected":""}>${v===""?"–":v}</option>`).join("")}</select></div>
+        <div class="field"><label for="cm-${i}">Comments</label>
+          <textarea id="cm-${i}" rows="2" data-i="${i}" data-f="comment" placeholder="Form, pain, what to change next time">${esc(e.comment)}</textarea></div>
+      </div>
+      <div class="chart-panel" id="chart-${i}" hidden></div>
+    </article>`;
+  }).join("");
+
+  const known = new Set(PROGRAM.flatMap(d=>d.exercises.map(e=>e.name)).concat(history.map(r=>r.exercise)));
+  $("#knownExercises").innerHTML = [...known].filter(Boolean).map(n=>`<option value="${esc(n)}">`).join("");
+}
+
+/* ---------- graphs ---------- */
+function metricsFor(ex){
+  return ex.type==="time"
+    ? [["hold","Longest hold (s)"],["reps","Total time (s)"]]
+    : [["top","Top weight"],["e1rm","Est. 1RM"],["vol","Volume"],["reps","Total reps"]];
+}
+function drawChart(i){
+  const ex = exList()[i], panel = document.getElementById("chart-"+i);
+  const metrics = metricsFor(ex);
+  const m = chartMetric[ex.name] || metrics[0][0];
+  const data = sessionsFor(ex.name).filter(s=>s[m]!=null);
+  panel.innerHTML = `<div class="seg" role="group" aria-label="Chart metric">${metrics.map(([k,l])=>`<button data-metric="${k}" data-ci="${i}" aria-pressed="${k===m}">${l}</button>`).join("")}</div>
+    ${data.length ? `<div class="chart-box"><canvas aria-label="${esc(ex.name)} progress chart"></canvas></div>`
+                  : `<div class="empty">${history.length||settings.url ? "No saved sessions for this exercise yet. Save one and it'll show here." : "Connect your sheet in settings to see your history."}</div>`}`;
+  if (charts[i]) { charts[i].destroy(); delete charts[i]; }
+  if (!data.length || !window.Chart) return;
+  const css = getComputedStyle(document.documentElement);
+  const col = css.getPropertyValue("--"+day.color).trim(), ink = css.getPropertyValue("--muted").trim(), grid = css.getPropertyValue("--line").trim();
+  const label = metrics.find(x=>x[0]===m)[1];
+  charts[i] = new Chart(panel.querySelector("canvas"), {
+    type:"line",
+    data:{ labels:data.map(s=>fmtDate(s.date)),
+      datasets:[{ label, data:data.map(s=>Math.round(s[m]*10)/10), borderColor:col, backgroundColor:col, pointRadius:4, pointHoverRadius:6, tension:.25, borderWidth:2.5 }]},
+    options:{ responsive:true, maintainAspectRatio:false, animation:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{
+        title:(it)=>{ const s=data[it[0].dataIndex]; return `${fmtDate(s.date)}${s.week?" (week "+s.week+")":""}`; },
+        afterBody:(it)=>{ const s=data[it[0].dataIndex];
+          const sets = ex.type==="time" ? s.sets.map(x=>`${x.r??"–"} s`).join(", ") : s.sets.map(x=>`${x.w??"–"}×${x.r??"–"}`).join(", ");
+          return [sets].concat(s.comment ? wrap("“"+s.comment+"”", 38) : []); } } } },
+      scales:{ x:{ ticks:{color:ink}, grid:{display:false} }, y:{ ticks:{color:ink}, grid:{color:grid}, beginAtZero:false } } }
+  });
+}
+function wrap(t,n){ const out=[]; let line=""; for(const w of t.split(" ")){ if((line+" "+w).trim().length>n){ out.push(line.trim()); line=w; } else line+=" "+w; } if(line.trim()) out.push(line.trim()); return out; }
+
+/* ---------- server ---------- */
+async function fetchHistory(quiet){
+  if (!settings.url) return;
+  try{
+    const res = await fetch(`${settings.url}?action=history&pin=${encodeURIComponent(settings.pin)}`);
+    const j = await res.json();
+    if (!j.ok) throw new Error(j.error||"Unknown error");
+    history = j.rows || []; store.set("historyCache", history);
+    render();
+    if (!quiet) toast("History updated");
+  }catch(err){ if(!quiet) toast("Couldn't load history: "+err.message); }
+}
+
+function buildPayload(){
+  const exercises = [];
+  exList().forEach(ex=>{
+    const e = entryFor(ex), isTime = ex.type==="time";
+    const sets = e.sets.map((s,j)=>({ set:j+1, weight: isTime?"":String(s.w).trim(), reps:String(s.r).trim() }))
+                       .filter(s=>s.weight!=="" || s.reps!=="");
+    if (sets.length || e.comment.trim() || e.rir) exercises.push({ name:ex.name, unit: isTime?"s":"kg", sets, rir:e.rir, comment:e.comment.trim() });
+  });
+  return { pin:settings.pin, sessionId:currentSid(), date:session.date, week:session.week, day:day.title, notes:session.feeling.trim(), exercises };
+}
+
+async function save(){
+  if (!settings.url){ openSettings(); toast("Connect your sheet first, then tap save again."); return; }
+  const payload = buildPayload();
+  if (!payload.exercises.length && !payload.notes){ toast("Enter at least one set before saving."); return; }
+  const btn = $("#saveBtn"); btn.disabled = true; btn.textContent = "Saving…"; $("#status").textContent = "";
+  try{
+    const res = await fetch(settings.url, { method:"POST", body:JSON.stringify(payload) }); // text/plain = no CORS preflight
+    const j = await res.json();
+    if (!j.ok) throw new Error(j.error||"Unknown error");
+    session.savedAt = Date.now(); store.set("draft:"+day.id, session);
+    $("#status").textContent = `Saved ${j.saved} rows to your sheet. Saving again updates this session instead of duplicating it.`;
+    toast("Saved to your sheet");
+    await fetchHistory(true);
+  }catch(err){
+    $("#status").textContent = "Not saved: " + err.message + ". Your entries are kept on this device, so you can try again.";
+    toast("Couldn't reach your sheet");
+  }finally{ btn.disabled=false; btn.textContent="Save session to sheet"; }
+}
+
+/* ---------- UI events ---------- */
+let toastTimer;
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2600); }
+
+function openSettings(){ $("#setUrl").value=settings.url; $("#setPin").value=settings.pin; $("#setStatus").textContent=""; $("#settings").showModal(); }
+
+$("#plates").addEventListener("click", e=>{
+  const b = e.target.closest("[data-day]"); if(!b) return;
+  store.set("draft:"+day.id, session);
+  day = PROGRAM.find(d=>d.id===b.dataset.day); store.set("lastDay", day.id);
+  session = loadSession(); $("#status").textContent=""; render(); window.scrollTo({top:0});
+});
+$("#week").addEventListener("change", e=>{ session.week=e.target.value; store.set("lastWeek", session.week); saveDraft(); });
+$("#date").addEventListener("change", e=>{ session.date=e.target.value||todayISO(); saveDraft(); render(); });
+$("#feeling").addEventListener("input", e=>{ session.feeling=e.target.value; saveDraft(); });
+
+$("#list").addEventListener("input", e=>{
+  const t=e.target, f=t.dataset.f; if(!f) return;
+  const ent = entryFor(exList()[+t.dataset.i]);
+  if (f==="w"||f==="r") ent.sets[+t.dataset.j][f]=t.value; else ent[f]=t.value;
+  saveDraft();
+});
+$("#list").addEventListener("change", e=>{ if(e.target.dataset.f==="rir"){ entryFor(exList()[+e.target.dataset.i]).rir=e.target.value; saveDraft(); } });
+$("#list").addEventListener("click", e=>{
+  const t = e.target.closest("button"); if(!t) return;
+  if (t.dataset.graph!==undefined){
+    const i=+t.dataset.graph, panel=document.getElementById("chart-"+i), open = t.getAttribute("aria-expanded")==="true";
+    t.setAttribute("aria-expanded", String(!open)); panel.hidden = open;
+    if (!open) drawChart(i); else if (charts[i]) { charts[i].destroy(); delete charts[i]; }
+  } else if (t.dataset.metric){
+    chartMetric[exList()[+t.dataset.ci].name]=t.dataset.metric; drawChart(+t.dataset.ci);
+  } else if (t.dataset.addset!==undefined){
+    entryFor(exList()[+t.dataset.addset]).sets.push({w:"",r:""}); saveDraft(); render();
+  } else if (t.dataset.rmset!==undefined){
+    entryFor(exList()[+t.dataset.rmset]).sets.pop(); saveDraft(); render();
+  } else if (t.dataset.rmex!==undefined){
+    const ex = exList()[+t.dataset.rmex];
+    session.extra = session.extra.filter(x=>x!==ex); delete session.entries[ex.name]; saveDraft(); render();
+  }
+});
+
+$("#addBtn").addEventListener("click", ()=>{
+  const name=$("#addName").value.trim(); if(!name){ $("#addName").focus(); return; }
+  if (exList().some(x=>norm(x.name)===norm(name))){ toast("That exercise is already on today's list."); return; }
+  const type=$("#addType").value;
+  session.extra.push({ name, scheme: type==="time"?"Timed hold":"Added today", sets:3, type });
+  $("#addName").value=""; saveDraft(); render(); toast(`Added ${name}`);
+});
+
+$("#newSession").addEventListener("click", ()=>{
+  if (!confirm("Clear everything you've entered for this day?")) return;
+  session = blankSession(); store.set("draft:"+day.id, session); render(); $("#status").textContent="";
+});
+
+$("#saveBtn").addEventListener("click", save);
+$("#openSettings").addEventListener("click", openSettings);
+$("#closeSettings").addEventListener("click", ()=>$("#settings").close());
+$("#saveSettings").addEventListener("click", ()=>{
+  settings = { url:$("#setUrl").value.trim(), pin:$("#setPin").value.trim() };
+  store.set("settings", settings); $("#settings").close(); toast("Settings saved"); fetchHistory(false);
+});
+$("#testConn").addEventListener("click", async ()=>{
+  const url=$("#setUrl").value.trim(), pin=$("#setPin").value.trim(), st=$("#setStatus");
+  if(!url){ st.textContent="Paste your web app URL first."; return; }
+  st.textContent="Checking…";
+  try{
+    const j = await (await fetch(`${url}?action=ping&pin=${encodeURIComponent(pin)}`)).json();
+    st.textContent = j.ok ? `Connected to “${j.spreadsheet}”. Tap save settings.` : "Reached the script, but: "+j.error;
+  }catch(err){ st.textContent="Couldn't reach that URL. Check it ends in /exec and that access is set to Anyone."; }
+});
+
+/* ---------- start ---------- */
+session = loadSession();
+render();
+fetchHistory(true);
+</script>
+</body>
+</html>
